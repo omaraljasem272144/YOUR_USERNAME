@@ -1,0 +1,15 @@
+'use strict';
+const $=s=>document.querySelector(s);let ws=null,pc=null,stream=null,ready=false;const stun=[{urls:'stun:stun.l.google.com:19302'}];
+const supported=!!navigator.mediaDevices?.getDisplayMedia;
+$('#compat').textContent=supported?'يدعم هذا المتصفح طلب مشاركة الشاشة':'متصفح هذا الجهاز لا يدعم بث الشاشة الكاملة من صفحة ويب. لا يمكن بدء البث هنا.';
+$('#start').disabled=!supported;
+function say(s){$('#msg').textContent=s}
+function cleanup(send=true){if(send && ws?.readyState===1)ws.send(JSON.stringify({type:'stopped'}));if(pc){pc.close();pc=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('#preview').srcObject=null;$('#placeholder').classList.remove('hidden');$('#stop').classList.add('hidden');$('#start').classList.remove('hidden');$('#start').disabled=!supported;ready=false}
+async function makeOffer(){if(!stream||!ready||ws?.readyState!==1)return;if(pc){pc.close();pc=null}pc=new RTCPeerConnection({iceServers:stun});stream.getTracks().forEach(t=>pc.addTrack(t,stream));pc.onicecandidate=e=>{if(e.candidate&&ws?.readyState===1)ws.send(JSON.stringify({type:'candidate',candidate:e.candidate}))};const offer=await pc.createOffer();await pc.setLocalDescription(offer);ws.send(JSON.stringify({type:'offer',sdp:pc.localDescription}));say('تم إرسال طلب الاتصال — جاري إظهار البث')}
+function connect(){const proto=location.protocol==='https:'?'wss:':'ws:';const token=location.pathname.split('/').pop();ws=new WebSocket(proto+'//'+location.host+'/ws?role=sender&token='+encodeURIComponent(token));ws.onopen=()=>say('متصل. ستُعرض الشاشة لدى صاحب الدعوة بعد الموافقة.');ws.onmessage=async e=>{let d;try{d=JSON.parse(e.data)}catch{return}try{if(d.type==='peer-ready'){ready=true;await makeOffer()}else if(d.type==='answer'&&pc)await pc.setRemoteDescription(d.sdp);else if(d.type==='candidate'&&pc)await pc.addIceCandidate(d.candidate);else if(d.type==='peer-left'){ready=false;if(pc){pc.close();pc=null}say('المشاهد غير متصل الآن؛ المشاركة لم تُنهَ بعد')}else if(d.type==='ended'){cleanup();say('صاحب الدعوة أنهى الجلسة')}}catch(err){say('خطأ اتصال: '+err.message)}};ws.onclose=()=>{if(stream){cleanup(false);say('انقطع الاتصال بالخادم وتوقفت المشاركة')}}}
+$('#start').onclick=async()=>{if(!supported)return;try{
+ const s=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
+ stream=s;const track=s.getVideoTracks()[0];if(!track){cleanup(false);return}track.addEventListener('ended',()=>{cleanup();say('أوقفت مشاركة الشاشة')},{once:true});$('#preview').srcObject=s;$('#placeholder').classList.add('hidden');$('#start').classList.add('hidden');$('#stop').classList.remove('hidden');say('تم السماح من الجهاز. جاري الاتصال بالمشاهد...');connect();
+ }catch(err){say(err.name==='NotAllowedError'?'تم إلغاء المشاركة أو رفض الإذن':('تعذّر بدء البث: '+err.message))}};
+$('#stop').onclick=()=>{cleanup();say('تم إيقاف مشاركة شاشتك')};
+addEventListener('pagehide',()=>cleanup());
