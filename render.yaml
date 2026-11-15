@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: connect-hub-cloud
+    runtime: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: CONNECT_HUB_CLOUD
+        value: "1"
+      - key: CONNECT_HUB_PASSWORD
+        sync: false
+      - key: CONNECT_HUB_SECRET
+        generateValue: true
+      - key: PYTHONUNBUFFERED
+        value: "1"
